@@ -219,7 +219,7 @@ void manejarBaseDatos(ConexionBD& conexion) {
     } while (opcionBD != 5);
 }
 
-// Prototipos de las funciones que faltan
+// Prototipos de las funciones que faltan en el codigo
 float calcularTMB(const Usuario& usuario);
 float obtenerFactorActividad(const Usuario& usuario);
 
