@@ -136,10 +136,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConexionBD.cpp" />
+    <ClCompile Include="Paciente.cpp" />
     <ClCompile Include="Proyecto_Salud.cpp" />
+    <ClCompile Include="usuario.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConexionBD.h" />
+    <ClInclude Include="Paciente.h" />
+    <ClInclude Include="usuario.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

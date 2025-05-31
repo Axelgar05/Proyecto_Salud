@@ -1,150 +1,340 @@
-#include <iostream>
+﻿#include <iostream>
+#include "ConexionBD.h"
+#include <vector>
 #include <string>
-#include <memory>
-#include <algorithm>
-
-// MySQL Connector headers
-#include <mysql_driver.h>
-#include <mysql_connection.h>
-#include <cppconn/prepared_statement.h>
+#include <cstdlib>
+#include "Paciente.h"
+#include <windows.h>
+#include "Usuario.h" // Incluir el archivo que contiene la definición de Usuario
+#define NOMINMAX
 
 using namespace std;
-using namespace sql;
 
-string toLowerCase(string str) {
-    transform(str.begin(), str.end(), str.begin(), ::tolower);
-    return str;
+
+// Limpiar el buffer de entrada
+void limpiarBuffer() {
+    while (cin.get() != '\n' && !cin.eof());
 }
 
-bool esGeneroValido(const string& genero) {
-    string generoLower = toLowerCase(genero);
-    return (generoLower == "hombre" || generoLower == "mujer");
-}
+// Estructura mejorada con comentarios descriptivos
+struct Usuario {
+    string nombre;          // Nombre completo (mínimo 2 palabras)
+    int edad;               // Edad en años (rango 1-120)
+    string genero;          // Género (masculino/femenino/otro)
+    string departamento;    // Departamento de residencia
+    string municipio;       // Municipio de residencia (debe coincidir con departamento)
+    float peso;             // Peso en kilogramos (rango 20-300 kg)
+    float altura;           // Altura en metros (rango 0.5-2.5 m)
+    string nivel_actividad; // Sedentario/ligero/moderado/intenso
+    string ocupacion;       // Ocupación principal
+};
 
-bool confirmarRegistro() {
-    string contrasena;
-    cout << "\nPara confirmar el registro, introduzca la contrase�a: ";
-    getline(cin, contrasena);
-    return contrasena == "1234";
-}
-
-void insertarPaciente() {
-    try {
-        // Conexi�n a la base de datos
-        mysql::MySQL_Driver* driver = mysql::get_mysql_driver_instance();
-        unique_ptr<Connection> con(driver->connect("tcp://127.0.0.1:3306", "tu_usuario", "tu_contrase�a"));
-        con->setSchema("tu_base_de_datos");
-
-        // Captura de datos
-        string nombre, apellido, genero, departamento, municipio, trabajo;
-        int edad;
-
-        cout << "=== Registro de Paciente ===" << endl;
-        cout << "Nombre: ";
-        getline(cin, nombre);
-
-        cout << "Apellido: ";
-        getline(cin, apellido);
-
-        cout << "Edad: ";
-        cin >> edad;
-        cin.ignore();
-
-        do {
-            cout << "G�nero (Hombre/Mujer): ";
-            getline(cin, genero);
-            if (!esGeneroValido(genero)) {
-                cout << "G�nero inv�lido. Intente nuevamente." << endl;
-            }
-        } while (!esGeneroValido(genero));
-
-        cout << "Departamento: ";
-        getline(cin, departamento);
-
-        cout << "Municipio: ";
-        getline(cin, municipio);
-
-        cout << "Trabajo: ";
-        getline(cin, trabajo);
-
-        // Confirmaci�n por contrase�a
-        if (!confirmarRegistro()) {
-            cout << "Contrase�a incorrecta. Registro cancelado." << endl;
-            return;
-        }
-
-        // Insertar en la tabla paciente
-        unique_ptr<PreparedStatement> pstmt(
-            con->prepareStatement("INSERT INTO paciente (nombrePaciente, apellidoPaciente, edadPaciente, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        );
-
-        pstmt->setString(1, nombre);
-        pstmt->setString(2, apellido);
-        pstmt->setInt(3, edad);
-        pstmt->setString(4, genero);
-        pstmt->setString(5, departamento);
-        pstmt->setString(6, municipio);
-        pstmt->setString(7, trabajo);
-
-        pstmt->execute();
-        cout << "\nPaciente insertado exitosamente en la base de datos." << endl;
-
-    }
-    catch (SQLException& e) {
-        cerr << "Error de base de datos: " << e.what() << endl;
-    }
-}
-
-void calcularIMC() {
-    float peso, altura;
-    cout << "\n=== C�lculo de IMC ===" << endl;
-    cout << "Ingrese peso (kg): ";
-    cin >> peso;
-    cout << "Ingrese altura (m): ";
-    cin >> altura;
-
-    if (altura <= 0) {
-        cout << "Altura no v�lida." << endl;
-        return;
-    }
-
-    float imc = peso / (altura * altura);
-    cout << "El IMC es: " << imc << endl;
-
-    // Clasificaci�n b�sica
-    if (imc < 18.5)
-        cout << "Clasificaci�n: Bajo peso" << endl;
-    else if (imc < 24.9)
-        cout << "Clasificaci�n: Normal" << endl;
-    else if (imc < 29.9)
-        cout << "Clasificaci�n: Sobrepeso" << endl;
-    else
-        cout << "Clasificaci�n: Obesidad" << endl;
-}
-
-int main() {
-    insertarPaciente();
-
-    int opcion;
+// Función mejorada con validaciones y especificación de unidades
+void pedirDatosUsuario(Usuario& usuario) {
     do {
-        cout << "\n=== Men� ===" << endl;
-        cout << "1. Calcular IMC" << endl;
-        cout << "0. Salir" << endl;
-        cout << "Seleccione una opci�n: ";
-        cin >> opcion;
-        cin.ignore();
+        cout << "Ingrese su nombre completo (ej. Juan Pérez): ";
+        getline(cin, usuario.nombre);
+        // Validar que contenga al menos un espacio
+        if (usuario.nombre.find(' ') == string::npos) {
+            cout << "Error: Debe ingresar al menos nombre y apellido.\n";
+        }
+    } while (usuario.nombre.find(' ') == string::npos);
+
+    do {
+        cout << "Ingrese su edad (en años, entre 1 y 120): ";
+        cin >> usuario.edad;
+        if (usuario.edad < 1 || usuario.edad > 120) {
+            cout << "Error: La edad debe estar entre 1 y 120 años.\n";
+            limpiarBuffer();
+        }
+    } while (usuario.edad < 1 || usuario.edad > 120);
+    limpiarBuffer();
+
+    do {
+        cout << "Ingrese su género (masculino/femenino/otro): ";
+        getline(cin, usuario.genero);
+    } while (usuario.genero.empty());
+
+    do {
+        cout << "Ingrese su departamento de residencia: ";
+        getline(cin, usuario.departamento);
+    } while (usuario.departamento.empty());
+
+    do {
+        cout << "Ingrese su municipio de residencia: ";
+        getline(cin, usuario.municipio);
+    } while (usuario.municipio.empty());
+
+    do {
+        cout << "Ingrese su peso en kilogramos (ej. 70.5, rango 20-300 kg): ";
+        cin >> usuario.peso;
+        if (usuario.peso < 20 || usuario.peso > 300) {
+            cout << "Error: El peso debe estar entre 20 y 300 kg.\n";
+            limpiarBuffer();
+        }
+    } while (usuario.peso < 20 || usuario.peso > 300);
+
+    do {
+        cout << "Ingrese su altura en metros (ej. 1.75, rango 0.5-2.5 m): ";
+        cin >> usuario.altura;
+        if (usuario.altura < 0.5 || usuario.altura > 2.5) {
+            cout << "Error: La altura debe estar entre 0.5 y 2.5 metros.\n";
+            limpiarBuffer();
+        }
+    } while (usuario.altura < 0.5 || usuario.altura > 2.5);
+    limpiarBuffer();
+
+    do {
+        cout << "Ingrese su nivel de actividad física:\n"
+            << "  - sedentario (poco o ningún ejercicio)\n"
+            << "  - ligero (ejercicio 1-3 días/semana)\n"
+            << "  - moderado (ejercicio 3-5 días/semana)\n"
+            << "  - intenso (ejercicio 6-7 días/semana)\n"
+            << "Seleccione: ";
+        getline(cin, usuario.nivel_actividad);
+    } while (usuario.nivel_actividad != "sedentario" &&
+        usuario.nivel_actividad != "ligero" &&
+        usuario.nivel_actividad != "moderado" &&
+        usuario.nivel_actividad != "intenso");
+
+    do {
+        cout << "Ingrese su ocupación principal: ";
+        getline(cin, usuario.ocupacion);
+    } while (usuario.ocupacion.empty());
+}
+
+// [Las funciones calcularIMC, calcularTMB, obtenerFactorActividad y calcularCaloriasDiarias 
+// permanecen igual que en el código original, pero con comentarios mejorados]
+
+// Función para calcular el Índice de Masa Corporal (IMC)
+float calcularIMC(const Usuario& usuario) {
+    if (usuario.altura > 0) {
+        return usuario.peso / (usuario.altura * usuario.altura);
+    }
+    else {
+        cout << "Error: La altura debe ser mayor que 0 para calcular el IMC.\n";
+        return 0.0f; // Valor por defecto en caso de error
+    }
+}
+
+// Función para calcular las calorías diarias requeridas
+float calcularCaloriasDiarias(const Usuario& usuario) {
+    // Calcular el TMB (Tasa Metabólica Basal) usando la fórmula de Harris-Benedict
+    float tmb = 0.0f;
+    if (usuario.genero == "masculino") {
+        tmb = 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad + 5;
+    } else if (usuario.genero == "femenino") {
+        tmb = 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad - 161;
+    } else {
+        cout << "Advertencia: Género no reconocido. Usando valores por defecto.\n";
+        tmb = 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad;
+    }
+
+    // Obtener el factor de actividad física
+    float factorActividad = 1.2f; // Por defecto: sedentario
+    if (usuario.nivel_actividad == "ligero") {
+        factorActividad = 1.375f;
+    } else if (usuario.nivel_actividad == "moderado") {
+        factorActividad = 1.55f;
+    } else if (usuario.nivel_actividad == "intenso") {
+        factorActividad = 1.725f;
+    }
+
+    // Calorías diarias = TMB * factor de actividad
+    return tmb * factorActividad;
+}
+
+// Función para mostrar información del paciente en la base de datos
+void manejarBaseDatos(ConexionBD& conexion) {
+    int opcionBD = 0; // Inicializar la variable
+    do {
+        cout << "\n----- Gestión de Base de Datos -----\n";
+        cout << "1. Mostrar pacientes\n";
+        cout << "2. Crear nuevo paciente\n";
+        cout << "3. Buscar paciente existente\n";
+        cout << "4. Actualizar información de paciente\n";
+        cout << "5. Volver al menú principal\n";
+        cout << "Seleccione una opción: ";
+        cin >> opcionBD;
+        limpiarBuffer();
+
+        switch (opcionBD) { // Asegurarse de que el case esté dentro de un switch
+        case 1: {
+            // Mostrar tabla
+            Paciente p = Paciente(); // Asegúrate de inicializar el objeto
+            p.leer(); // Llama al método leer de la clase Paciente para mostrar los datos
+            break;
+        }
+        case 2: {
+            // Crear nuevo paciente
+            string nombrePaciente, apellidoPaciente, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente;
+            int edad = 0;
+            float altura, peso;
+
+            cout << "Ingrese el nombre del paciente: " << endl;
+            getline(cin, nombrePaciente);
+            cout << "Ingrese el apellido del paciente: " << endl;
+            getline(cin, apellidoPaciente);
+            cout << "Ingrese la edad del paciente: " << endl;
+            cin >> edad;
+            limpiarBuffer();
+            cout << "Ingrese el género del paciente (masculino/femenino): " << endl;
+            getline(cin, generoPaciente);
+            cout << "Ingrese el departamento del paciente: " << endl;
+            getline(cin, departamentoPaciente);
+            cout << "Ingrese el municipio del paciente: " << endl;
+            getline(cin, municipioPaciente);
+            cout << "Ingrese el trabajo del paciente: " << endl;
+            getline(cin, trabajoPaciente);
+            cout << "Ingrese la altura del paciente (en metros): " << endl;
+            cin >> altura;
+            cout << "Ingrese el peso del paciente (en kilogramos): " << endl;
+            cin >> peso;
+
+            Paciente p = Paciente(peso, altura, nombrePaciente, apellidoPaciente, edad, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente, "", 0);
+
+
+            p.crear();
+            p.leer();
+            break;
+        }
+        case 3: {
+            // Buscar paciente existente
+            cout << "Función para buscar un paciente aún no implementada.\n";
+            break;
+        }
+        case 4: {
+            // Actualizar información de paciente
+            cout << "Función para actualizar un paciente aún no implementada.\n";
+            break;
+        }
+        case 5:
+            // Volver al menú principal
+            cout << "Volviendo al menú principal...\n";
+            break;
+        default:
+            // Opción no válida
+            cout << "Opción no válida. Intente nuevamente.\n";
+        }
+    } while (opcionBD != 5);
+}
+
+// Prototipos de las funciones que faltan
+float calcularTMB(const Usuario& usuario);
+float obtenerFactorActividad(const Usuario& usuario);
+
+// Submenú para cálculos de salud
+void menuCalculosSalud(const Usuario& usuario) {
+    int opcionCalculo;
+    do {
+        cout << "\n----- Cálculos de Salud del Usuario -----\n";
+        cout << "1. Calcular IMC\n";
+        cout << "2. Calcular TMB (Tasa Metabólica Basal)\n";
+        cout << "3. Calcular Factor de Actividad\n";
+        cout << "4. Calcular Calorías Diarias Requeridas\n";
+        cout << "5. Volver al menú principal\n";
+        cout << "Seleccione una opción: ";
+        cin >> opcionCalculo;
+        limpiarBuffer();
+
+        switch (opcionCalculo) {
+        case 1: {
+            float imc = calcularIMC(usuario);
+            cout << "IMC: " << imc << endl;
+            break;
+        }
+        case 2: {
+            float tmb = calcularTMB(usuario);
+            cout << "TMB: " << tmb << " kcal/día" << endl;
+            break;
+        }
+        case 3: {
+            float factor = obtenerFactorActividad(usuario);
+            cout << "Factor de actividad: " << factor << endl;
+            break;
+        }
+        case 4: {
+            float calorias = calcularCaloriasDiarias(usuario);
+            cout << "Calorías diarias requeridas: " << calorias << " kcal" << endl;
+            break;
+        }
+        case 5:
+            cout << "Volviendo al menú principal...\n";
+            break;
+        default:
+            cout << "Opción no válida. Intente nuevamente.\n";
+        }
+    } while (opcionCalculo != 5);
+}
+
+// Ejemplo de implementación de las funciones faltantes
+float calcularTMB(const Usuario& usuario) {
+    if (usuario.genero == "masculino")
+        return 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad + 5;
+    else if (usuario.genero == "femenino")
+        return 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad - 161;
+    else
+        return 10 * usuario.peso + 6.25 * (usuario.altura * 100) - 5 * usuario.edad;
+}
+
+float obtenerFactorActividad(const Usuario& usuario) {
+    if (usuario.nivel_actividad == "sedentario") return 1.2f;
+    if (usuario.nivel_actividad == "ligero") return 1.375f;
+    if (usuario.nivel_actividad == "moderado") return 1.55f;
+    if (usuario.nivel_actividad == "intenso") return 1.725f;
+    return 1.2f;
+}
+
+Usuario usuario; // Ahora el compilador reconocerá 'Usuario'
+int opcion;
+
+//--------------------------------------------INT MAIN PROYECTO SALUD--------------------------------------------//
+int main() {
+    // Consola normaliza los caracteres con Western European (Windows-1252)
+    SetConsoleOutputCP(1252);
+    SetConsoleCP(1252);
+    std::ios_base::sync_with_stdio(false);
+
+    ConexionBD cn = ConexionBD();
+    cn.abrir_conexion();
+
+    if (cn.getConector()) {
+        cout << "✓ Conexión exitosa con la base de datos\n";
+    }
+    else {
+        cout << "✗ Error en la conexión con la base de datos\n";
+        // En un caso real, podrías querer terminar el programa aquí
+    }
+
+    do {
+        cout << "\n════════ Menú Principal ════════\n";
+        cout << "1. Gestión de Base de Datos\n";
+        cout << "2. Cálculos de Salud del Usuario\n";
+        cout << "3. Salir del programa\n";
+        cout << "Seleccione una opción (1-3): ";
+
+        while (!(cin >> opcion) || opcion < 1 || opcion > 3) {
+            cout << "Error: Ingrese un número entre 1 y 3: ";
+            limpiarBuffer();
+        }
+        limpiarBuffer();
 
         switch (opcion) {
         case 1:
-            calcularIMC();
+            manejarBaseDatos(cn);
             break;
-        case 0:
-            cout << "Saliendo del programa..." << endl;
+        case 2:
+            pedirDatosUsuario(usuario);
+            menuCalculosSalud(usuario);
             break;
-        default:
-            cout << "Opci�n no v�lida." << endl;
+        case 3:
+            cout << "Saliendo del programa...\n";
+            break;
         }
-    } while (opcion != 0);
+    } while (opcion != 3);
 
+    cn.cerrar_conexion();
     return 0;
 }
+//--------------------------------------------FIN MAIN PROYECTO SALUD--------------------------------------------//
+
