@@ -1,9 +1,11 @@
 ﻿#pragma once
+#define NOMINMAX // Prevents conflicts with the max macro in <windows.h>
 #include "usuario.h"
 #include <iostream>
 #include <mysql.h>
 #include "ConexionBD.h"
-#include <string> 
+#include <string>
+#include <limits> // Asegúrate de incluir este encabezado para std::numeric_limits
 
 using namespace std;
 class Paciente :public usuario{
@@ -95,14 +97,14 @@ public:
             cn.abrir_conexion();
             if (cn.getConector()) {
                 cout << "_____________ Datos de los Pacientes _____________" << endl;
-				cout << "ID Nombre Apellido Edad Genero Departamento Municipio Trabajo Altura Peso" << endl;
+                cout << "ID Nombre Apellido Edad Genero Departamento Municipio Trabajo Altura Peso" << endl;
                 string consulta = "select * from paciente;";
                 const char* c = consulta.c_str();
                 q_estado = mysql_query(cn.getConector(), c);
                 if (!q_estado) {
                     resultado = mysql_store_result(cn.getConector());
                     while (fila = mysql_fetch_row(resultado)) {
-                        cout << fila[0] << "," << fila[1] << "," << fila[2] << "," << fila[3] << "," << fila[4] << "," << fila[5] << "," << fila[6] << "," << fila[7] << "," << fila[8] << "," << fila[9] << endl ;
+                        cout << fila[0] << "," << fila[1] << "," << fila[2] << "," << fila[3] << "," << fila[4] << "," << fila[5] << "," << fila[6] << "," << fila[7] << "," << fila[8] << "," << fila[9] << endl;
                     }
                 }
                 else {
@@ -114,7 +116,42 @@ public:
             }
             cn.cerrar_conexion();
         }
-        void actualizar(){}
+        void actualizar() {
+            int q_estado = 0;
+            ConexionBD cn = ConexionBD();
+            cn.abrir_conexion();
+            if (cn.getConector()) {
+                // Convertir idPaciente a string
+                string id = to_string(idPaciente);
+                string edad = to_string(edadPaciente);
+                string altura = to_string(alturaPaciente);
+                string peso = to_string(pesoPaciente);
+
+                // Construir la consulta SQL correctamente
+                string consulta = "UPDATE paciente SET nombrePaciente = '" + nombrePaciente +
+                                  "', apellidoPaciente = '" + apellidoPaciente +
+                                  "', edadPaciente = '" + edad +
+                                  "', generoPaciente = '" + generoPaciente +
+                                  "', departamentoPaciente = '" + departamentoPaciente +
+                                  "', municipioPaciente = '" + municipioPaciente +
+                                  "', trabajoPaciente = '" + trabajoPaciente +
+                                  "', alturaPaciente = '" + altura +
+                                  "', pesoPaciente = '" + peso +
+                                  "' WHERE idPaciente = '" + id + "'";
+
+                const char* c = consulta.c_str();
+                q_estado = mysql_query(cn.getConector(), c);
+                if (!q_estado) {
+                    cout << "✓ Registro Actualizado Exitosamente ✓" << endl;
+                } else {
+                    cout << "xxx Actualización Fallida xxx" << endl;
+                    cout << mysql_error(cn.getConector()) << endl;
+                }
+            } else {
+                cout << "xxx Fallo de la conexión xxx" << endl;
+            }
+            cn.cerrar_conexion();
+        }
         void borrar(){}
 }
 ;
