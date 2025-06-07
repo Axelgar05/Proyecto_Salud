@@ -117,6 +117,27 @@ float calcularIMC(const Usuario& usuario) {
     }
 }
 
+// Función para calcular el peso ideal (fórmula de Broca modificada)
+float calcularPesoIdeal(const Usuario& usuario) {
+    // Para hombres: altura en cm - 100 - ((altura en cm - 150) / 4)
+    // Para mujeres: altura en cm - 100 - ((altura en cm - 150) / 2.5)
+    float altura_cm = usuario.altura * 100;
+    if (usuario.genero == "masculino")
+        return altura_cm - 100 - ((altura_cm - 150) / 4.0f);
+    else
+        return altura_cm - 100 - ((altura_cm - 150) / 2.5f);
+}
+
+// Función para clasificar el IMC
+string clasificarIMC(float imc) {
+    if (imc < 18.5f) return "Desnutrición";
+    else if (imc < 25.0f) return "Normal";
+    else if (imc < 30.0f) return "Sobrepeso";
+    else if (imc < 35.0f) return "Obesidad I";
+    else if (imc < 40.0f) return "Obesidad II";
+    else return "Obesidad III (mórbida)";
+}
+
 // Función para calcular las calorías diarias requeridas
 float calcularCaloriasDiarias(const Usuario& usuario) {
     // Calcular el TMB (Tasa Metabólica Basal) usando la fórmula de Harris-Benedict
@@ -193,7 +214,6 @@ void manejarBaseDatos(ConexionBD& conexion) {
 
             Paciente p = Paciente(peso, altura, nombrePaciente, apellidoPaciente, edad, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente, "", 0);
 
-
             p.crear();
             p.leer();
             break;
@@ -205,7 +225,38 @@ void manejarBaseDatos(ConexionBD& conexion) {
         }
         case 4: {
             // Actualizar información de paciente
-            cout << "Función para actualizar un paciente aún no implementada.\n";
+            int idActualizar;
+            string nombrePaciente, apellidoPaciente, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente;
+            int edad = 0;
+            float altura, peso;
+
+            cout << "Ingrese el ID del paciente a actualizar: ";
+            cin >> idActualizar;
+            limpiarBuffer();
+
+            cout << "Ingrese el nuevo nombre del paciente: ";
+            getline(cin, nombrePaciente);
+            cout << "Ingrese el nuevo apellido del paciente: ";
+            getline(cin, apellidoPaciente);
+            cout << "Ingrese la nueva edad del paciente: ";
+            cin >> edad;
+            limpiarBuffer();
+            cout << "Ingrese el nuevo género del paciente: ";
+            getline(cin, generoPaciente);
+            cout << "Ingrese el nuevo departamento del paciente: ";
+            getline(cin, departamentoPaciente);
+            cout << "Ingrese el nuevo municipio del paciente: ";
+            getline(cin, municipioPaciente);
+            cout << "Ingrese el nuevo trabajo del paciente: ";
+            getline(cin, trabajoPaciente);
+            cout << "Ingrese la nueva altura del paciente (en metros): ";
+            cin >> altura;
+            cout << "Ingrese la nueva peso del paciente (en kilogramos): ";
+            cin >> peso;
+            limpiarBuffer();
+
+            Paciente p = Paciente(peso, altura, nombrePaciente, apellidoPaciente, edad, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente, "", idActualizar);
+            p.actualizar();
             break;
         }
         case 5:
@@ -222,17 +273,17 @@ void manejarBaseDatos(ConexionBD& conexion) {
 // Prototipos de las funciones que faltan en el codigo
 float calcularTMB(const Usuario& usuario);
 float obtenerFactorActividad(const Usuario& usuario);
+void generarPDFCalculosSalud(const Usuario& usuario);
 
 // Submenú para cálculos de salud
 void menuCalculosSalud(const Usuario& usuario) {
     int opcionCalculo;
     do {
         cout << "\n----- Cálculos de Salud del Usuario -----\n";
-        cout << "1. Calcular IMC\n";
-        cout << "2. Calcular TMB (Tasa Metabólica Basal)\n";
-        cout << "3. Calcular Factor de Actividad\n";
-        cout << "4. Calcular Calorías Diarias Requeridas\n";
-        cout << "5. Volver al menú principal\n";
+            cout << "1. Mostrar todos los cálculos\n";
+        cout << "2. Estudio de peso ideal y estado\n";
+        cout << "3. Calcular solo TMB\n";
+        cout << "4. Volver al menú principal\n";
         cout << "Seleccione una opción: ";
         cin >> opcionCalculo;
         limpiarBuffer();
@@ -240,31 +291,45 @@ void menuCalculosSalud(const Usuario& usuario) {
         switch (opcionCalculo) {
         case 1: {
             float imc = calcularIMC(usuario);
-            cout << "IMC: " << imc << endl;
+            float tmb = calcularTMB(usuario);
+            float factor = obtenerFactorActividad(usuario);
+            float calorias = calcularCaloriasDiarias(usuario);
+            cout << "IMC: " << imc << " (" << clasificarIMC(imc) << ")\n";
+            cout << "TMB: " << tmb << " kcal/día\n";
+            cout << "Factor de actividad: " << factor << endl;
+            cout << "Calorías diarias requeridas: " << calorias << " kcal\n";
             break;
         }
         case 2: {
-            float tmb = calcularTMB(usuario);
-            cout << "TMB: " << tmb << " kcal/día" << endl;
+            float imc = calcularIMC(usuario);
+            float pesoIdeal = calcularPesoIdeal(usuario);
+            float diferencia = usuario.peso - pesoIdeal;
+            string estadoIMC = clasificarIMC(imc);
+
+            cout << "IMC actual: " << imc << " (" << estadoIMC << ")\n";
+            cout << "Peso ideal estimado: " << pesoIdeal << " kg\n";
+            if (abs(diferencia) < 1.0f) {
+                cout << "¡Estás en tu peso ideal! Mantente así.\n";
+            } else if (diferencia > 0) {
+                cout << "Deberías bajar aproximadamente " << diferencia << " kg para alcanzar tu peso ideal.\n";
+            } else {
+                cout << "Deberías subir aproximadamente " << -diferencia << " kg para alcanzar tu peso ideal.\n";
+            }
+            cout << "Clasificación IMC: " << estadoIMC << endl;
             break;
         }
         case 3: {
-            float factor = obtenerFactorActividad(usuario);
-            cout << "Factor de actividad: " << factor << endl;
+            float tmb = calcularTMB(usuario);
+            cout << "TMB: " << tmb << " kcal/día\n";
             break;
         }
-        case 4: {
-            float calorias = calcularCaloriasDiarias(usuario);
-            cout << "Calorías diarias requeridas: " << calorias << " kcal" << endl;
-            break;
-        }
-        case 5:
+        case 4:
             cout << "Volviendo al menú principal...\n";
             break;
         default:
             cout << "Opción no válida. Intente nuevamente.\n";
         }
-    } while (opcionCalculo != 5);
+    } while (opcionCalculo != 4);
 }
 
 // Ejemplo de implementación de las funciones faltantes
