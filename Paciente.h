@@ -153,5 +153,40 @@ public:
             cn.cerrar_conexion();
         }
         void borrar(){}
+
+        // Método para cargar los datos del paciente desde la base de datos por ID
+        bool cargarPorId(int id) {
+            int q_estado = 0;
+            ConexionBD cn = ConexionBD();
+            MYSQL_ROW fila;
+            MYSQL_RES* resultado;
+            cn.abrir_conexion();
+            if (cn.getConector()) {
+                string consulta = "SELECT nombrePaciente, apellidoPaciente, edadPaciente, generoPaciente, departamentoPaciente, municipioPaciente, trabajoPaciente, alturaPaciente, pesoPaciente FROM paciente WHERE idPaciente = " + to_string(id) + ";";
+                const char* c = consulta.c_str();
+                q_estado = mysql_query(cn.getConector(), c);
+                if (!q_estado) {
+                    resultado = mysql_store_result(cn.getConector());
+                    if ((fila = mysql_fetch_row(resultado))) {
+                        nombrePaciente = fila[0];
+                        apellidoPaciente = fila[1];
+                        edadPaciente = atoi(fila[2]);
+                        generoPaciente = fila[3];
+                        departamentoPaciente = fila[4];
+                        municipioPaciente = fila[5];
+                        trabajoPaciente = fila[6];
+                        alturaPaciente = atof(fila[7]);
+                        pesoPaciente = atof(fila[8]);
+                        idPaciente = id;
+                        mysql_free_result(resultado);
+                        cn.cerrar_conexion();
+                        return true;
+                    }
+                    mysql_free_result(resultado);
+                }
+            }
+            cn.cerrar_conexion();
+            return false;
+        }
 }
 ;

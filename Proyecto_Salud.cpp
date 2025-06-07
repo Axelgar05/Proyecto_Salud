@@ -1,12 +1,15 @@
-﻿#include <iostream>
+#define NOMINMAX // Esto debe ir antes de windows.h
+#include <iostream>
 #include "ConexionBD.h"
 #include <vector>
 #include <string>
+
 #include <cstdlib>
 #include "Paciente.h"
 #include <windows.h>
 #include "Usuario.h" // Incluir el archivo que contiene la definición de Usuario
-#define NOMINMAX
+#include <hpdf.h>
+#include <direct.h> // Para _mkdir si prefieres multiplataforma
 
 using namespace std;
 
@@ -14,6 +17,17 @@ using namespace std;
 // Limpiar el buffer de entrada
 void limpiarBuffer() {
     while (cin.get() != '\n' && !cin.eof());
+}
+
+// Añade esta función para limpiar la pantalla (Windows)
+void limpiarPantalla() {
+    system("cls");
+}
+
+// Añade esta función para pausar la consola
+void pausarConsola() {
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
 // Estructura mejorada con comentarios descriptivos
@@ -273,63 +287,67 @@ void manejarBaseDatos(ConexionBD& conexion) {
 // Prototipos de las funciones que faltan en el codigo
 float calcularTMB(const Usuario& usuario);
 float obtenerFactorActividad(const Usuario& usuario);
-void generarPDFCalculosSalud(const Usuario& usuario);
+void generarPDFCalculosSalud(const Usuario& usuario, float imc, float tmb, float factor, float calorias);
 
-// Submenú para cálculos de salud
-void menuCalculosSalud(const Usuario& usuario) {
-    int opcionCalculo;
-    do {
-        cout << "\n----- Cálculos de Salud del Usuario -----\n";
-            cout << "1. Mostrar todos los cálculos\n";
-        cout << "2. Estudio de peso ideal y estado\n";
-        cout << "3. Calcular solo TMB\n";
-        cout << "4. Volver al menú principal\n";
-        cout << "Seleccione una opción: ";
-        cin >> opcionCalculo;
-        limpiarBuffer();
+// Submenú para cálculos de salud SOLO con datos de la base de datos
+void menuCalculosSalud(const Usuario&) {
+    int idPaciente;
+    cout << "\n╔════════════════════════════════════════════════════════════╗\n";
+    cout << "║      CÁLCULOS DE SALUD DEL USUARIO (BASE DE DATOS)        ║\n";
+    cout << "╚════════════════════════════════════════════════════════════╝\n";
+    cout << "Ingrese el ID del paciente para realizar los cálculos: ";
+    cin >> idPaciente;
+    limpiarBuffer();
 
-        switch (opcionCalculo) {
-        case 1: {
-            float imc = calcularIMC(usuario);
-            float tmb = calcularTMB(usuario);
-            float factor = obtenerFactorActividad(usuario);
-            float calorias = calcularCaloriasDiarias(usuario);
-            cout << "IMC: " << imc << " (" << clasificarIMC(imc) << ")\n";
-            cout << "TMB: " << tmb << " kcal/día\n";
-            cout << "Factor de actividad: " << factor << endl;
-            cout << "Calorías diarias requeridas: " << calorias << " kcal\n";
-            break;
-        }
-        case 2: {
-            float imc = calcularIMC(usuario);
-            float pesoIdeal = calcularPesoIdeal(usuario);
-            float diferencia = usuario.peso - pesoIdeal;
-            string estadoIMC = clasificarIMC(imc);
+    Paciente p;
+    if (!p.cargarPorId(idPaciente)) {
+        cout << "\n╔══════════════════════════════╗\n";
+        cout << "║  No se encontró un paciente  ║\n";
+        cout << "║        con ese ID.           ║\n";
+        cout << "╚══════════════════════════════╝\n";
+        return;
+    }
 
-            cout << "IMC actual: " << imc << " (" << estadoIMC << ")\n";
-            cout << "Peso ideal estimado: " << pesoIdeal << " kg\n";
-            if (abs(diferencia) < 1.0f) {
-                cout << "¡Estás en tu peso ideal! Mantente así.\n";
-            } else if (diferencia > 0) {
-                cout << "Deberías bajar aproximadamente " << diferencia << " kg para alcanzar tu peso ideal.\n";
-            } else {
-                cout << "Deberías subir aproximadamente " << -diferencia << " kg para alcanzar tu peso ideal.\n";
-            }
-            cout << "Clasificación IMC: " << estadoIMC << endl;
-            break;
-        }
-        case 3: {
-            float tmb = calcularTMB(usuario);
-            cout << "TMB: " << tmb << " kcal/día\n";
-            break;
-        }
-        case 4:
-            cout << "Volviendo al menú principal...\n";
-            break;
-        default:
-            cout << "Opción no válida. Intente nuevamente.\n";
-        }
-    } while (opcionCalculo != 4);
+    // Mostrar datos del paciente con marco
+    cout << "\n╔════════════════════════════════════════════════════════════╗\n";
+    cout << "║                  DATOS DEL PACIENTE                        ║\n";
+    cout << "╠════════════════════════════════════════════════════════════╣\n";
+    cout << "║ Nombre:       " << p.getnombre() << " " << p.getapellido() << endl;
+    cout << "║ Edad:         " << p.getedad() << endl;
+    cout << "║ Género:       " << p.getgenero() << endl;
+    cout << "║ Departamento: " << p.getdepartamento() << endl;
+    cout << "║ Municipio:    " << p.getmunicipio() << endl;
+    cout << "║ Trabajo:      " << p.gettrabajo() << endl;
+    cout << "║ Altura:       " << p.getaltura() << " m" << endl;
+    cout << "║ Peso:         " << p.getpeso() << " kg" << endl;
+    cout << "╚════════════════════════════════════════════════════════════╝\n";
+
+    // Convertir a struct Usuario para usar las funciones existentes
+    Usuario usuarioBD;
+    usuarioBD.nombre = p.getnombre() + " " + p.getapellido();
+    usuarioBD.edad = p.getedad();
+    usuarioBD.genero = p.getgenero();
+    usuarioBD.departamento = p.getdepartamento();
+    usuarioBD.municipio = p.getmunicipio();
+    usuarioBD.peso = p.getpeso();
+    usuarioBD.altura = p.getaltura();
+    usuarioBD.nivel_actividad = "sedentario"; // Puedes ajustar si tienes este dato
+    usuarioBD.ocupacion = p.gettrabajo();
+
+    // Realizar cálculos
+    float imc = calcularIMC(usuarioBD);
+    float tmb = calcularTMB(usuarioBD);
+    float factor = obtenerFactorActividad(usuarioBD);
+    float calorias = calcularCaloriasDiarias(usuarioBD);
+
+    cout << "\n--- Resultados de Cálculos de Salud ---\n";
+    cout << "IMC: " << imc << " (" << clasificarIMC(imc) << ")\n";
+    cout << "TMB: " << tmb << " kcal/día\n";
+    cout << "Factor de actividad: " << factor << endl;
+    cout << "Calorías diarias requeridas: " << calorias << " kcal\n";
+
+    // Generar PDF con los cálculos
+    generarPDFCalculosSalud(usuarioBD, imc, tmb, factor, calorias);
 }
 
 // Ejemplo de implementación de las funciones faltantes
@@ -350,14 +368,159 @@ float obtenerFactorActividad(const Usuario& usuario) {
     return 1.2f;
 }
 
+void generarPDFCalculosSalud(const Usuario& usuario, float imc, float tmb, float factor, float calorias) {
+    // Crear carpeta "reportes" si no existe
+    CreateDirectoryA("reportes", NULL);
+
+    HPDF_Doc pdf = HPDF_New(nullptr, nullptr);
+    if (!pdf) {
+        std::cerr << "No se pudo crear el documento PDF.\n";
+        return;
+    }
+
+    HPDF_Page page = HPDF_AddPage(pdf);
+    HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
+
+    // Insertar el logo de la universidad (debe estar en la carpeta del ejecutable)
+    HPDF_Image logo = HPDF_LoadPngImageFromFile(pdf, "logo_umg.png");
+    if (logo) {
+        // Dibuja el logo en la parte superior izquierda (ajusta tamaño/posición si lo deseas)
+        HPDF_Page_DrawImage(page, logo, 50, 810, 80, 80);
+    }
+
+    // Título centrado y grande
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Bold", nullptr), 18);
+    HPDF_Page_TextOut(page, 180, 800, "Reporte de Salud Personal");
+    HPDF_Page_EndText(page);
+
+    // Fecha y hora
+    time_t now = time(0);
+    tm ltm;
+    localtime_s(&ltm, &now);
+    char fecha[64];
+    strftime(fecha, sizeof(fecha), "Fecha de generación: %d/%m/%Y %H:%M", &ltm);
+
+    // Crear nombre de archivo único con fecha y hora
+    char nombreArchivo[256];
+    strftime(nombreArchivo, sizeof(nombreArchivo), "reportes\\reporte_salud_%Y%m%d_%H%M%S.pdf", &ltm);
+
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica", nullptr), 10);
+    HPDF_Page_TextOut(page, 50, 780, fecha);
+    HPDF_Page_EndText(page);
+
+    // Línea separadora
+    HPDF_Page_MoveTo(page, 50, 770);
+    HPDF_Page_LineTo(page, 550, 770);
+    HPDF_Page_Stroke(page);
+
+    // Datos personales
+    float y = 750;
+    float lineHeight = 18;
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Bold", nullptr), 12);
+    HPDF_Page_TextOut(page, 50, y, "Datos personales:");
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica", nullptr), 12);
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Nombre: " + usuario.nombre).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Edad: " + std::to_string(usuario.edad)).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Género: " + usuario.genero).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Departamento: " + usuario.departamento).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Municipio: " + usuario.municipio).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Ocupación: " + usuario.ocupacion).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Peso: " + std::to_string(usuario.peso) + " kg").c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Altura: " + std::to_string(usuario.altura) + " m").c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Nivel de actividad: " + usuario.nivel_actividad).c_str());
+    HPDF_Page_EndText(page);
+
+    // Línea separadora
+    y -= 10;
+    HPDF_Page_MoveTo(page, 50, y);
+    HPDF_Page_LineTo(page, 550, y);
+    HPDF_Page_Stroke(page);
+
+    // Resultados
+    y -= 25;
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Bold", nullptr), 12);
+    HPDF_Page_TextOut(page, 50, y, "Resultados:");
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica", nullptr), 12);
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("IMC: " + std::to_string(imc)).c_str());
+    y -= lineHeight;
+    std::string clasificacion = "Clasificación IMC: " + clasificarIMC(imc);
+    HPDF_Page_TextOut(page, 60, y, clasificacion.c_str());
+    y -= lineHeight;
+    float pesoIdeal = calcularPesoIdeal(usuario);
+    HPDF_Page_TextOut(page, 60, y, ("Peso ideal: " + std::to_string(pesoIdeal) + " kg").c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("TMB: " + std::to_string(tmb) + " kcal/día").c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Factor de actividad: " + std::to_string(factor)).c_str());
+    y -= lineHeight;
+    HPDF_Page_TextOut(page, 60, y, ("Calorías diarias requeridas: " + std::to_string(calorias) + " kcal").c_str());
+    y -= lineHeight;
+    HPDF_Page_EndText(page);
+
+    // Datos de la universidad
+    y -= 30;
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Bold", nullptr), 11);
+    HPDF_Page_TextOut(page, 50, y, "Universidad Mariano Gálvez de Guatemala");
+    y -= 16;
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica", nullptr), 11);
+    HPDF_Page_TextOut(page, 50, y, "Facultad de Ingeniería de Sistemas");
+    y -= 16;
+    HPDF_Page_TextOut(page, 50, y, "Curso: Programación 1");
+    HPDF_Page_EndText(page);
+
+    // Recomendaciones básicas
+    y -= 30;
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Bold", nullptr), 12);
+    HPDF_Page_TextOut(page, 50, y, "Recomendaciones:");
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica", nullptr), 12);
+    y -= lineHeight;
+    std::string recomendacion;
+    if (imc < 18.5f)
+        recomendacion = "Aumente su ingesta calórica y consulte a un nutricionista.";
+    else if (imc < 25.0f)
+        recomendacion = "¡Felicidades! Mantenga su estilo de vida saludable.";
+    else if (imc < 30.0f)
+        recomendacion = "Reduzca el consumo de calorías y aumente la actividad física.";
+    else
+        recomendacion = "Consulte a un profesional de la salud para un plan personalizado.";
+    HPDF_Page_TextOut(page, 60, y, recomendacion.c_str());
+    HPDF_Page_EndText(page);
+
+    // Pie de página
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize(page, HPDF_GetFont(pdf, "Helvetica-Oblique", nullptr), 9);
+    HPDF_Page_TextOut(page, 50, 40, "Reporte generado por Proyecto Salud - Universidad Mariano Galvez");
+    HPDF_Page_EndText(page);
+
+    HPDF_SaveToFile(pdf, nombreArchivo);
+    HPDF_Free(pdf);
+
+    std::cout << "PDF generado: " << nombreArchivo << "\n";
+}
+
 Usuario usuario; // Ahora el compilador reconocerá 'Usuario'
 int opcion;
 
 //--------------------------------------------INT MAIN PROYECTO SALUD--------------------------------------------//
 int main() {
-    // Consola normaliza los caracteres con Western European (Windows-1252)
-    SetConsoleOutputCP(1252);
-    SetConsoleCP(1252);
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
     std::ios_base::sync_with_stdio(false);
 
     ConexionBD cn = ConexionBD();
@@ -389,7 +552,6 @@ int main() {
             manejarBaseDatos(cn);
             break;
         case 2:
-            pedirDatosUsuario(usuario);
             menuCalculosSalud(usuario);
             break;
         case 3:

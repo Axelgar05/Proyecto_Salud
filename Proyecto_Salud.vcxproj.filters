@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Proyecto_Salud.cpp">
-      <Filter>Archivos de origen</Filter>
-    </ClCompile>
     <ClCompile Include="ConexionBD.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -25,6 +22,9 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Paciente.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Proyecto_Salud.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
